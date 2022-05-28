@@ -63,68 +63,9 @@ const setupScheduler = (bot, appData, api) => {
       chats.map(async (chatId) => {
         const keys = Object.keys(appData.subscriptionMaps[chatId])
         await Promise.all(
-          keys.map(async (k) => {
-            const [pid, accountId] = k.split('_')
-            const { current, previousPoint } = appData.subscriptions[k]
-            if (!current) {
-              return
-            }
-            const currentOwnerClaimable = new BN(current.ownerClaimable)
-            const prevOwnerClaimable = new BN(previousPoint.ownerClaimable)
-            const deltaOwnerClaimable =
-              currentOwnerClaimable.sub(prevOwnerClaimable)
-            const currentOwnerClaimableBalance = api.createType(
-              'BalanceOf',
-              new BN(current.ownerClaimable)
-            )
-            const prevOwnerClaimableBalance = api.createType(
-              'BalanceOf',
-              new BN(previousPoint.ownerClaimable)
-            )
-            const deltaOwnerClaimableBalance = api.createType(
-              'BalanceOf',
-              deltaOwnerClaimable
-            )
-            const currentDelegatorClaimable = new BN(current.delegatorClaimable)
-            const prevDelegatorClaimable = new BN(
-              previousPoint.delegatorClaimable
-            )
-            const deltaDelegatorClaimable = currentDelegatorClaimable.sub(
-              prevDelegatorClaimable
-            )
-            const currentDelegatorClaimableBalance = api.createType(
-              'BalanceOf',
-              new BN(current.delegatorClaimable)
-            )
-            const prevDelegatorClaimableBalance = api.createType(
-              'BalanceOf',
-              new BN(previousPoint.delegatorClaimable)
-            )
-            const deltaDelegatorClaimableBalance = api.createType(
-              'BalanceOf',
-              deltaDelegatorClaimable
-            )
-
-            const prevTime = dayjs(previousPoint.updatedAt)
-
-            await bot.telegram.sendMessage(
-              chatId,
-              `<b>Daily Report</b>
-<code>${accountId}</code>
-@Pool #${pid} from <b>${prevTime.fromNow()}</b> to Now
-
-<b>Owner Claimable</b>
-${prevOwnerClaimableBalance.toHuman()} ➡ ${deltaOwnerClaimableBalance.toHuman()} ➡ ${currentOwnerClaimableBalance.toHuman()}
-
-<b>Delegator Claimable</b>
-${prevDelegatorClaimableBalance.toHuman()} ➡ ${deltaDelegatorClaimableBalance.toHuman()} ➡ ${currentDelegatorClaimableBalance.toHuman()}
-
-<i>Last point: ${prevTime.format()}</i>`,
-              {
-                parse_mode: 'HTML',
-              }
-            )
-          })
+          keys.map((k) =>
+            sendStatus('Daily Report', k, chatId, appData, api, bot)
+          )
         )
       })
     )
@@ -137,45 +78,54 @@ ${prevDelegatorClaimableBalance.toHuman()} ➡ ${deltaDelegatorClaimableBalance.
 const handleGetSubscriptions = async (ctx, bot, appData, api) => {
   const keys = Object.keys(appData.subscriptionMaps[ctx.chat.id])
   await Promise.all(
-    keys.map(async (k) => {
-      const [pid, accountId] = k.split('_')
-      const { current, previousPoint } = appData.subscriptions[k]
-      const currentOwnerClaimable = new BN(current.ownerClaimable)
-      const prevOwnerClaimable = new BN(previousPoint.ownerClaimable)
-      const deltaOwnerClaimable = currentOwnerClaimable.sub(prevOwnerClaimable)
-      const currentOwnerClaimableBalance = api.createType(
-        'BalanceOf',
-        new BN(current.ownerClaimable)
-      )
-      const prevOwnerClaimableBalance = api.createType(
-        'BalanceOf',
-        new BN(previousPoint.ownerClaimable)
-      )
-      const deltaOwnerClaimableBalance = api.createType(
-        'BalanceOf',
-        deltaOwnerClaimable
-      )
-      const currentDelegatorClaimable = new BN(current.delegatorClaimable)
-      const prevDelegatorClaimable = new BN(previousPoint.delegatorClaimable)
-      const deltaDelegatorClaimable = currentDelegatorClaimable.sub(
-        prevDelegatorClaimable
-      )
-      const currentDelegatorClaimableBalance = api.createType(
-        'BalanceOf',
-        new BN(current.delegatorClaimable)
-      )
-      const prevDelegatorClaimableBalance = api.createType(
-        'BalanceOf',
-        new BN(previousPoint.delegatorClaimable)
-      )
-      const deltaDelegatorClaimableBalance = api.createType(
-        'BalanceOf',
-        deltaDelegatorClaimable
-      )
+    keys.map((k) =>
+      sendStatus('Current Status', k, ctx.chat.id, appData, api, bot)
+    )
+  )
+}
 
-      const prevTime = dayjs(previousPoint.updatedAt)
+const sendStatus = async (title, k, chatId, appData, api, bot) => {
+  const [pid, accountId] = k.split('_')
+  const { current, previousPoint } = appData.subscriptions[k]
+  const currentOwnerClaimable = new BN(current.ownerClaimable)
+  const prevOwnerClaimable = new BN(previousPoint.ownerClaimable)
+  const deltaOwnerClaimable = currentOwnerClaimable.sub(prevOwnerClaimable)
+  const currentOwnerClaimableBalance = api.createType(
+    'BalanceOf',
+    new BN(current.ownerClaimable)
+  )
+  const prevOwnerClaimableBalance = api.createType(
+    'BalanceOf',
+    new BN(previousPoint.ownerClaimable)
+  )
+  const deltaOwnerClaimableBalance = api.createType(
+    'BalanceOf',
+    deltaOwnerClaimable
+  )
+  const currentDelegatorClaimable = new BN(current.delegatorClaimable)
+  const prevDelegatorClaimable = new BN(previousPoint.delegatorClaimable)
+  const deltaDelegatorClaimable = currentDelegatorClaimable.sub(
+    prevDelegatorClaimable
+  )
+  const currentDelegatorClaimableBalance = api.createType(
+    'BalanceOf',
+    new BN(current.delegatorClaimable)
+  )
+  const prevDelegatorClaimableBalance = api.createType(
+    'BalanceOf',
+    new BN(previousPoint.delegatorClaimable)
+  )
+  const deltaDelegatorClaimableBalance = api.createType(
+    'BalanceOf',
+    deltaDelegatorClaimable
+  )
 
-      await ctx.replyWithHTML(`<b>Current Status</b>
+  const currentTime = dayjs(current.updatedAt)
+  const prevTime = dayjs(previousPoint.updatedAt)
+
+  await bot.telegram.sendMessage(
+    chatId,
+    `<b>${title}</b>
 <code>${accountId}</code>
 @Pool #${pid} from <b>${prevTime.fromNow()}</b> to Now
 
@@ -185,8 +135,12 @@ ${prevOwnerClaimableBalance.toHuman()} ➡ ${deltaOwnerClaimableBalance.toHuman(
 <b>Delegator Claimable</b>
 ${prevDelegatorClaimableBalance.toHuman()} ➡ ${deltaDelegatorClaimableBalance.toHuman()} ➡ ${currentDelegatorClaimableBalance.toHuman()}
 
-<i>Last point: ${prevTime.format()}</i>`)
-    })
+<b>Current point #${current.currentHeight}</b>
+<i>${currentTime.format()}</i>
+
+<b>Last point #${previousPoint.currentHeight}</b>
+<i>${prevTime.format()}</i>`,
+    { parse_mode: 'HTML' }
   )
 }
 
