@@ -1,5 +1,6 @@
 import { BN } from 'bn.js'
 import { Telegraf } from 'telegraf'
+import { scheduleJob } from 'node-schedule'
 import dayjs from 'dayjs'
 import logger from './logger.js'
 import relativeTime from 'dayjs/plugin/relativeTime.js'
@@ -39,6 +40,8 @@ const startBotListener = (appData, api) => {
   wrapCommand('subscribe', handleSubscribe)
   wrapCommand('unsubscribe', handleUnsubscribe)
 
+  setupScheduler(bot, appData, api)
+
   const ret = bot.launch()
 
   process.once('SIGINT', () => {
@@ -53,7 +56,83 @@ const startBotListener = (appData, api) => {
   return ret
 }
 
-const setupScheduler = () => {}
+const setupScheduler = (bot, appData, api) => {
+  scheduleJob(process.env.CRON ?? '0 8 * * *', async () => {
+    const chats = Object.keys(appData.subscriptionMaps)
+    await Promise.all(
+      chats.map(async (chatId) => {
+        const keys = Object.keys(appData.subscriptionMaps[chatId])
+        await Promise.all(
+          keys.map(async (k) => {
+            const [pid, accountId] = k.split('_')
+            const { current, previousPoint } = appData.subscriptions[k]
+            if (!current) {
+              return
+            }
+            const currentOwnerClaimable = new BN(current.ownerClaimable)
+            const prevOwnerClaimable = new BN(previousPoint.ownerClaimable)
+            const deltaOwnerClaimable =
+              currentOwnerClaimable.sub(prevOwnerClaimable)
+            const currentOwnerClaimableBalance = api.createType(
+              'BalanceOf',
+              new BN(current.ownerClaimable)
+            )
+            const prevOwnerClaimableBalance = api.createType(
+              'BalanceOf',
+              new BN(previousPoint.ownerClaimable)
+            )
+            const deltaOwnerClaimableBalance = api.createType(
+              'BalanceOf',
+              deltaOwnerClaimable
+            )
+            const currentDelegatorClaimable = new BN(current.delegatorClaimable)
+            const prevDelegatorClaimable = new BN(
+              previousPoint.delegatorClaimable
+            )
+            const deltaDelegatorClaimable = currentDelegatorClaimable.sub(
+              prevDelegatorClaimable
+            )
+            const currentDelegatorClaimableBalance = api.createType(
+              'BalanceOf',
+              new BN(current.delegatorClaimable)
+            )
+            const prevDelegatorClaimableBalance = api.createType(
+              'BalanceOf',
+              new BN(previousPoint.delegatorClaimable)
+            )
+            const deltaDelegatorClaimableBalance = api.createType(
+              'BalanceOf',
+              deltaDelegatorClaimable
+            )
+
+            const prevTime = dayjs(previousPoint.updatedAt)
+
+            await bot.telegram.sendMessage(
+              chatId,
+              `<b>Daily Report</b>
+<code>${accountId}</code>
+@Pool #${pid} from <b>${prevTime.fromNow()}</b> to Now
+
+<b>Owner Claimable</b>
+${prevOwnerClaimableBalance.toHuman()} ➡ ${deltaOwnerClaimableBalance.toHuman()} ➡ ${currentOwnerClaimableBalance.toHuman()}
+
+<b>Delegator Claimable</b>
+${prevDelegatorClaimableBalance.toHuman()} ➡ ${deltaDelegatorClaimableBalance.toHuman()} ➡ ${currentDelegatorClaimableBalance.toHuman()}
+
+<i>Last point: ${prevTime.format()}</i>`,
+              {
+                parse_mode: 'HTML',
+              }
+            )
+          })
+        )
+      })
+    )
+    Object.values(appData.subscriptions).forEach((obj) => {
+      obj.previousPoint = obj.current || obj.previousPoint
+    })
+  })
+}
 
 const handleGetSubscriptions = async (ctx, bot, appData, api) => {
   const keys = Object.keys(appData.subscriptionMaps[ctx.chat.id])
@@ -96,7 +175,8 @@ const handleGetSubscriptions = async (ctx, bot, appData, api) => {
 
       const prevTime = dayjs(previousPoint.updatedAt)
 
-      await ctx.replyWithHTML(`<code>${accountId}</code>
+      await ctx.replyWithHTML(`<b>Current Status</b>
+<code>${accountId}</code>
 @Pool #${pid} from <b>${prevTime.fromNow()}</b> to Now
 
 <b>Owner Claimable</b>
