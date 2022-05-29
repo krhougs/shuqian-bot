@@ -1,7 +1,7 @@
 数钱bot
 ----
 
-A simple Telegram monitoring daily mining income.
+A simple Telegram bot monitoring daily mining income.
 
 ```bash
 yarn install
