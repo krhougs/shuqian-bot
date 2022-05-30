@@ -188,7 +188,21 @@ const setData = async (appData, apiAt, api) => {
                 .round()
                 .toString()
             : '0'
-          if (!subObj.previousPoint) {
+          if (subObj.previousPoint) {
+            const { previousPoint } = subObj
+            const currentOwnerClaimable = new BN(current.ownerClaimable)
+            const prevOwnerClaimable = new BN(previousPoint.ownerClaimable)
+            const currentDelegatorClaimable = new BN(current.delegatorClaimable)
+            const prevDelegatorClaimable = new BN(
+              previousPoint.delegatorClaimable
+            )
+            if (
+              currentOwnerClaimable.lt(prevOwnerClaimable) ||
+              currentDelegatorClaimable.lt(prevDelegatorClaimable)
+            ) {
+              subObj.previousPoint = current
+            }
+          } else {
             subObj.previousPoint = current
           }
           subObj.last = subObj.current
