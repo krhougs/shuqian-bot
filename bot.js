@@ -89,7 +89,6 @@ const sendStatus = async (title, k, chatId, appData, api, bot) => {
   const { current, previousPoint } = appData.subscriptions[k]
   const currentOwnerClaimable = new BN(current.ownerClaimable)
   const prevOwnerClaimable = new BN(previousPoint.ownerClaimable)
-  const deltaOwnerClaimable = currentOwnerClaimable.sub(prevOwnerClaimable)
   const currentOwnerClaimableBalance = api.createType(
     'BalanceOf',
     new BN(current.ownerClaimable)
@@ -98,15 +97,15 @@ const sendStatus = async (title, k, chatId, appData, api, bot) => {
     'BalanceOf',
     new BN(previousPoint.ownerClaimable)
   )
-  const deltaOwnerClaimableBalance = api.createType(
-    'BalanceOf',
-    deltaOwnerClaimable
+  const deltaOwnerClaimableBalance = currentOwnerClaimable.gte(
+    prevOwnerClaimable
   )
+    ? api
+        .createType('BalanceOf', currentOwnerClaimable.sub(prevOwnerClaimable))
+        .toHuman()
+    : '(Claimed)'
   const currentDelegatorClaimable = new BN(current.delegatorClaimable)
   const prevDelegatorClaimable = new BN(previousPoint.delegatorClaimable)
-  const deltaDelegatorClaimable = currentDelegatorClaimable.sub(
-    prevDelegatorClaimable
-  )
   const currentDelegatorClaimableBalance = api.createType(
     'BalanceOf',
     new BN(current.delegatorClaimable)
@@ -115,10 +114,16 @@ const sendStatus = async (title, k, chatId, appData, api, bot) => {
     'BalanceOf',
     new BN(previousPoint.delegatorClaimable)
   )
-  const deltaDelegatorClaimableBalance = api.createType(
-    'BalanceOf',
-    deltaDelegatorClaimable
+  const deltaDelegatorClaimableBalance = currentDelegatorClaimable.gte(
+    prevDelegatorClaimable
   )
+    ? api
+        .createType(
+          'BalanceOf',
+          currentDelegatorClaimable.sub(prevDelegatorClaimable)
+        )
+        .toHuman()
+    : '(Claimed)'
 
   const currentTime = dayjs(current.updatedAt)
   const prevTime = dayjs(previousPoint.updatedAt)
@@ -130,10 +135,10 @@ const sendStatus = async (title, k, chatId, appData, api, bot) => {
 @Pool #${pid} from <b>${prevTime.fromNow()}</b> to Now
 
 <b>Owner Claimable</b>
-${prevOwnerClaimableBalance.toHuman()} ➡ ${deltaOwnerClaimableBalance.toHuman()} ➡ ${currentOwnerClaimableBalance.toHuman()}
+${prevOwnerClaimableBalance.toHuman()} ➡ ${deltaOwnerClaimableBalance} ➡ ${currentOwnerClaimableBalance.toHuman()}
 
 <b>Delegator Claimable</b>
-${prevDelegatorClaimableBalance.toHuman()} ➡ ${deltaDelegatorClaimableBalance.toHuman()} ➡ ${currentDelegatorClaimableBalance.toHuman()}
+${prevDelegatorClaimableBalance.toHuman()} ➡ ${deltaDelegatorClaimableBalance} ➡ ${currentDelegatorClaimableBalance.toHuman()}
 
 <b>Current point #${current.currentHeight}</b>
 <i>${currentTime.format()}</i>

@@ -206,6 +206,11 @@ const createDataProvider = async () => {
   const wsProvider = new WsProvider('wss://khala-api.phala.network/ws')
   const api = await ApiPromise.create({ provider: wsProvider })
 
+  api.on('disconnected', (e) => {
+    logger.error(e)
+    process.exit(255)
+  })
+
   let currentHeadHash = null
   let currentNumber = 0
   let apiAtCurrent = null
