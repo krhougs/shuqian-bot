@@ -1,5 +1,10 @@
 import { createDataProvider } from './data.js'
 import { startBotListener } from './bot.js'
+import logger from './logger.js'
 
-const [appData, api] = await createDataProvider()
-startBotListener(appData, api)
+try {
+  const [appData, api] = await createDataProvider()
+  await startBotListener(appData, api)
+} catch (e) {
+  logger.error(e)
+}
